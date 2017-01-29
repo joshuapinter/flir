@@ -4,10 +4,11 @@
 
 if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
     //WINDOWS user: set path to tools
-    $convert='"C:\Program Files\ImageMagick-6.8.5-Q16\convert.exe"';
-    $exiftool='"C:\Program Files\exiftool\exiftool.exe"';
+    $convert='"C:\util\ImageMagick\convert.exe"';
+    $exiftool='"C:\util\exiftool\exiftool.exe"';
     //set font variable as needed (Mac/Win) for color scale
     $font='-font c:\windows\Fonts\arialbd.ttf';
+    $escape='';
 
 } else {
     //Unix/Mac: set path to tools here 
@@ -15,6 +16,7 @@ if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
     $exiftool='/usr/local/bin/exiftool';
     //set font variable as needed (Mac/Win) for color scale
     $font='-font /Library/Fonts/Arial\ Bold.ttf';
+    $escape='\\';
 }
 
 //color scale
@@ -41,6 +43,8 @@ $longopts  = array(
     "pip::",       // opt. value
     "clut",        // No value
     "scale",      
+    "msx",
+    "shade",
     "help",       
 );
 $options = getopt($shortopts, $longopts);
@@ -70,6 +74,8 @@ Options Summary:
 --pip[=AxB]         input image is a flir PiP radiometric image
                     overlay embedded "real image" with "ir image"
                     [optional] crop ir image to size AxB (i.e. --pip=90x90 )
+--msx               Flir MSX Mode for PiP 
+--shade             Flir MSX Mode for PiP with amboss effect 
 --help              print this help
   
 # source: 
@@ -145,7 +151,6 @@ print('Plancks values: '.$R1.' '.$R2.' '.$B.' '.$O.' '.$F."\n\n");
 $RAWmax=$exif[0]['RawValueMedian']+$exif[0]['RawValueRange']/2;
 $RAWmin=$RAWmax-$exif[0]['RawValueRange'];
 
-print('RAW Temp Range from sensor : '.exec($convert.' raw.png -format "%[min] %[max]" info:')."\n");
 printf("RAW Temp Range FLIR setting: %d %d\n",$RAWmin,$RAWmax);
 
 //overwrite with settings
@@ -182,6 +187,7 @@ if ($exif[0]['RawThermalImageType'] != "TIFF")
 }else{
    exec($exiftool." -b -RawThermalImage $flirimg | ".$convert." - raw.png");      
 }
+print('RAW Temp Range from sensor : '.exec($convert.' raw.png -format "%[min] %[max]" info:')."\n");
 
 // convert every RAW-16-Bit Pixel with Planck's Law to a Temperature Grayscale value and append temp scale
 $Smax=$B/log($R1/($R2*($RAWmax+$O))+$F);
@@ -213,9 +219,32 @@ if ( !isset($options['pip']) )
     {
         $crop="-gravity Center -crop ".$options['pip']."+0+0";
     }  
-    $resize=100*$exif[0]['EmbeddedImageWidth']/$exif[0]['Real2IR']/$exif[0]['RawThermalImageWidth'];
-    $resize="-resize ".$resize.'%';
-    exec($convert." ir.png $crop +repage ".$resize." $pal -clut embedded.png +swap -gravity Center -geometry $geometrie -compose over -composite -background ".$frame_color." -flatten +matte gradient.png -gravity East +append ".$destimg);
+    $resizepercent=100*$exif[0]['EmbeddedImageWidth']/$exif[0]['Real2IR']/$exif[0]['RawThermalImageWidth'];
+    $resize="-resize ".$resizepercent.'%';
+    if ( !isset($options['msx']) && !isset($options['shade']) )
+    {
+       exec($convert." ir.png $crop +repage ".$resize." $pal -clut embedded.png +swap -gravity Center -geometry $geometrie -compose over -composite -background ".$frame_color." -flatten +matte gradient.png -gravity East +append ".$destimg);
+    }else{
+       $cropx=$resizepercent*$exif[0]['RawThermalImageWidth']/100;
+       $cropy=$resizepercent*$exif[0]['RawThermalImageHeight']/100;
+       // $escape: bash/win have different brackets
+       if ( isset($options['msx']) )
+       {
+          // high pass to real image and crop to IR size
+          exec($convert." embedded.png -gravity center -crop {$cropx}x{$cropy}{$geometrie} $escape( -clone 0 -blur 0x3 $escape) -compose mathematics -define compose:args=0,-1,+1,0.5 -composite -colorspace gray -sharpen 0x3 -level 30%,70%! embedded1.png");
+       }else{
+          // shade filter to real image and crop to IR size
+          exec($convert." embedded.png -gravity center -crop {$cropx}x{$cropy}{$geometrie} -auto-level -shade 45x30 -auto-level embedded1.png");
+          $gamma=exec($convert." embedded1.png -format \"%[fx:mean]\" info:");
+          $gamma=log($gamma)/log(0.5);
+          exec($convert." embedded1.png -gamma $gamma embedded1.png");
+       }
+       // overlay real with IR
+       exec($convert." ir.png ".$resize." $pal -clut embedded1.png +swap -compose overlay -composite ir2.png");
+       echo "\n";
+       #echo($convert." ir.png $crop +repage ".$resize." $pal -clut embedded1.png +swap -gravity Center -geometry $geometrie -compose overlay -composite ".$destimg);
+       exec($convert." embedded.png ir2.png -gravity Center -geometry $geometrie -compose over -composite -background ".$frame_color." -flatten +matte gradient.png -gravity East +append ".$destimg); 
+    }
 }
 
 print("wrote $destimg with Temp-Range: $Temp_min / $Temp_max degree Celsius\n");
