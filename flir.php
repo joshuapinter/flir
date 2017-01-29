@@ -211,9 +211,18 @@ if ( !isset($options['pip']) )
             exec($convert." ir.png ".$resize." ".$destimg);
     }    
 }else{
-//make PiP
+    //make PiP
     //read embedded image
-    exec($exiftool." -b -EmbeddedImage $flirimg | ".$convert." - -set colorspace YCbCr -colorspace RGB embedded.png");
+    printf("Embedded Image Type: %s\n",$exif[0]['EmbeddedImageType']);
+    if ($exif[0]['EmbeddedImageType'] == "PNG")
+    {
+       // 8 Bit PNG, change Colorspace
+       exec($exiftool." -b -EmbeddedImage $flirimg | ".$convert." - -set colorspace YCbCr -colorspace RGB embedded.png");      
+    }else{
+        //8 bit jpg
+       exec($exiftool." -b -EmbeddedImage $flirimg | ".$convert." - embedded.png");
+    }
+    
     $geometrie=$exif[0]['OffsetX'].$exif[0]['OffsetY'];
     if ( is_string($options['pip']) )
     {
