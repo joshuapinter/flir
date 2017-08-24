@@ -7,10 +7,20 @@ Completely based on tomas123's flir.php file. Instead of being locked away in in
 ## Usage
 
 ```bash
+$ php flir.php -i IR_0575.jpg -o outputimage
+```
+ 
+### Additional Help
+
+Get listing of options by running help.
+
+```bash
 $ php flir.php         # or
 $ php flir.php -h      # or
 $ php flir.php --help
+```
 
+```bash
 usage: $argv[0] [options] -i ir_file.jpg -o outputimage
 
 Settings:
