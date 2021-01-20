@@ -45,14 +45,14 @@ Options Summary:
 
 ## Reference 
 
-###[tomas123's original PHP script](http://u88.n24.queensu.ca/exiftool/forum/index.php/topic,4898.0.html)
+### [tomas123's original PHP script](http://u88.n24.queensu.ca/exiftool/forum/index.php/topic,4898.0.html)
 
 This was the original (lengthy) thread where user tomas123 originally posted the flir.php script. In this entire thread you can see 
 that tomas123 really knows his way around images, thermal imaging, ImageMagick and coding. Very impressive. This Github repository is solely 
 a means to allow more people to see his work and hopefully to improve and expand upon it. Hopefully, tomas123 will even come on here and 
 contribute (or take ownership).
 
-###[BFIC Image Editor by Daves](http://pc.daves.cz/BFIC_-_thermal_images)
+### [BFIC Image Editor by Daves](http://pc.daves.cz/BFIC_-_thermal_images)
 
 "Daves" used tomas123's original flir.php script and created a very impressive Windows GUI around it, allowing you to do realtime edits of thermal 
 images and generate basic reports. In particularly, it allows you to easily:
